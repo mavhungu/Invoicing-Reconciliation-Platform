@@ -58,6 +58,9 @@
       "readyWhen": {
         "signal": true
       },
+      "options": {
+        "proxyConfig": "apps/web/proxy.conf.json"
+      },
       "executor": "@angular/build:dev-server",
       "defaultConfiguration": "development",
       "configurations": {

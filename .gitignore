@@ -8,6 +8,11 @@ out-tsc
 # dependencies
 node_modules
 
+# environment
+.env
+.env.*
+!.env.example
+
 # IDEs and editors
 /.idea
 .project
@@ -45,5 +50,11 @@ Thumbs.db
 .claude/settings.local.json
 
 .angular
+
+/docs/Invoicing & Reconciliation UI Design-png.zip
+docs/Invoicing & Reconciliation UI Design-png.zip
+
+/Invoicing & Reconciliation UI Design (1).pdf
+Invoicing & Reconciliation UI Design (1).pdf
 
 __screenshots__/

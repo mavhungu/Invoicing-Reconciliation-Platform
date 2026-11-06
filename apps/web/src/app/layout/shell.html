@@ -1,0 +1,58 @@
+<div class="app-shell">
+  <aside class="sidebar" aria-label="Main navigation">
+    <a class="brand" routerLink="/dashboard">RonewaPAy</a>
+
+    <label class="tenant-label" for="tenant-select">Organisation</label>
+    <select
+      id="tenant-select"
+      [disabled]="tenant.memberships().length === 0 || busy()"
+      [ngModel]="tenant.activeTenantId()"
+      (ngModelChange)="onTenantChange($event)"
+    >
+      @if (tenant.memberships().length === 0) {
+        <option [ngValue]="null">No organisation selected</option>
+      } @else {
+        @for (membership of tenant.memberships(); track membership.tenantId) {
+          <option [ngValue]="membership.tenantId">{{ membership.tenantName }}</option>
+        }
+      }
+    </select>
+    @if (message()) {
+      <p class="form-message" role="alert">{{ message() }}</p>
+    }
+
+    <nav class="navigation">
+      @for (item of visibleNavigationItems(); track item.path) {
+        <a
+          class="navigation-link"
+          [routerLink]="item.path"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: true }"
+        >
+          <app-icon [name]="item.icon" />
+          <span>{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+
+    <div class="account">
+      <div class="account-copy">
+        <span class="account-name">{{ displayName() }}</span>
+        <span class="account-role">{{ tenant.activeRole() || 'No role' }}</span>
+      </div>
+      <button
+        class="sign-out"
+        type="button"
+        aria-label="Sign out"
+        [disabled]="busy()"
+        (click)="signOut()"
+      >
+        <app-icon name="logout" />
+      </button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

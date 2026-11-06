@@ -70,6 +70,10 @@ Protect routes with `JwtAuthGuard`; it verifies the JWT and rechecks the active 
 
 The Angular shell uses `AuthService` for in-memory session state, `AuthApiService` for typed auth endpoints, and `ApiClient` as the reusable typed HTTP wrapper for feature services. On protected browser routes it attempts cookie-based session restoration; access tokens are not stored in local storage. The HTTP interceptor adds bearer tokens to same-origin `/api/` requests and retries a protected API request once after refreshing a 401. The tenant selector asks the API to switch the active tenant before updating local state. During development, the Angular server proxies `/api` to the Nest API at `http://localhost:3000`; production must route `/api` to the API on the same origin (or explicitly configure CORS and credentials).
 
+## CI and GitHub
+
+The GitHub Actions workflow at `.github/workflows/ci.yml` runs for pull requests and pushes to `main`. It installs from the npm lockfile, starts an ephemeral PostgreSQL service, applies committed Prisma migrations, and runs lint, tests, builds, and affected API end-to-end tests through Nx. This is a single Nx monorepo: `apps/api` belongs to the repository rooted here and should be committed and pushed from the workspace root along with the root manifests and Prisma files it depends on.
+
 ## Add new projects
 
 While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
