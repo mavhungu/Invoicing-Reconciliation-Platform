@@ -30,6 +30,46 @@ These targets are either [inferred automatically](https://nx.dev/concepts/inferr
 
 [More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
 
+## Shared contracts
+
+The API and web app can import shared DTOs, types, and constants from `libs/shared`:
+
+```ts
+import type { CreateInvoiceDto, Money } from '@invoice-reconciliation-platform/shared';
+```
+
+Money fields use integer cents, and invoice lines carry their own configurable VAT rate in basis points. These exports are compile-time contracts; validate untrusted input at the API boundary. Tenant identity should come from the authenticated request context, not create DTOs.
+
+## Prisma and PostgreSQL
+
+The API uses Prisma ORM 7 with the PostgreSQL driver adapter. Copy `.env.example` to `.env`, set `DATABASE_URL`, and replace `AUTH_ACCESS_TOKEN_SECRET` with a fresh random secret before starting the API. Generate one with:
+
+```powershell
+node -e "console.log(require('node:crypto').randomBytes(48).toString('base64url'))"
+```
+
+Users are global identities; tenant-specific roles and access live in `Membership`. Self-service registration creates a tenant and its initial owner membership. Passwords use Argon2id, a memory-hard algorithm that raises the cost of large-scale offline guessing. `AuditLog` records tenant-scoped events and rejects updates, deletes, and truncation at the database level. Refresh tokens are opaque, rotated, and stored only as SHA-256 hashes; the raw refresh token is sent in an HttpOnly, SameSite=Lax cookie. Access tokens are short-lived JWTs. The tenancy migration preserves existing user roles by moving them into memberships and enables forced RLS on `Membership` and `AuditLog`. Tenant-scoped operations on those tables use `PrismaService.withTenant(tenantId, callback)`; membership discovery before tenant selection uses a transaction-local user context. Production must use a database role that cannot bypass RLS. If a database already has duplicate email addresses across tenants, resolve them before applying the tenancy migration; it fails explicitly rather than merging accounts. Existing accounts created before authentication have no password hash and need an explicit password-reset/onboarding flow before they can log in.
+
+```powershell
+Copy-Item .env.example .env
+# Set DATABASE_URL and AUTH_ACCESS_TOKEN_SECRET in .env.
+npm run db:validate
+npm run db:generate
+npm run db:migrate
+npx nx test api
+npx nx lint api
+npx nx build api
+npx nx serve api
+```
+
+`db:migrate` creates/applies migrations against the configured database. The generated Prisma Client is checked in under `apps/api/src/generated/prisma` so clean Nx builds do not depend on running generation first; regenerate it after changing `prisma/schema.prisma`.
+
+Authentication endpoints are under `/api/auth`: `POST register`, `POST login`, `POST refresh`, `POST logout`, `POST tenant`, and `GET me`. Login can accept a `tenantId`; otherwise, it selects the user's first membership. Registration requires `email`, a 12-character-minimum `password`, `displayName`, and `organizationName`. Logout revokes the current refresh session. Login and tenant selection return an access token and membership summaries; the refresh token is never included in the JSON body.
+
+Protect routes with `JwtAuthGuard`; it verifies the JWT and rechecks the active membership and role against PostgreSQL. Add `RolesGuard` and `@Roles(...)` for role restrictions, and use `@CurrentUser()` for the authenticated principal. Never trust a client-supplied tenant ID without checking membership, never store plaintext refresh tokens, and do not rely on frontend route guards for authorization. Rate limiting, email verification, password reset, and account recovery remain production follow-ups.
+
+The Angular shell uses `AuthService` for in-memory session state, `AuthApiService` for typed auth endpoints, and `ApiClient` as the reusable typed HTTP wrapper for feature services. On protected browser routes it attempts cookie-based session restoration; access tokens are not stored in local storage. The HTTP interceptor adds bearer tokens to same-origin `/api/` requests and retries a protected API request once after refreshing a 401. The tenant selector asks the API to switch the active tenant before updating local state. During development, the Angular server proxies `/api` to the Nest API at `http://localhost:3000`; production must route `/api` to the API on the same origin (or explicitly configure CORS and credentials).
+
 ## Add new projects
 
 While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
